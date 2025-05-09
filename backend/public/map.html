@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EcoTrack Bin Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align: center;">EcoTrack: Bin Map</h2>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map('map').setView([33.5333, -5.1000], 15); // Example: Ifrane coordinates
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Fetch bin data from your API
+    fetch('http://localhost:5000/api/bins')
+      .then(response => response.json())
+      .then(bins => {
+        bins.forEach(bin => {
+          if (bin.latitude && bin.longitude) {
+            L.marker([bin.latitude, bin.longitude])
+              .addTo(map)
+              .bindPopup(`<b>${bin.location}</b><br>Fill Level: ${bin.fillLevel}%`);
+          }
+        });
+      });
+  </script>
+</body>
+</html>
