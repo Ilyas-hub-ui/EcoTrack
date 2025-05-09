@@ -10,7 +10,7 @@ function App() {
     const [username, setUsername] = useState('');
     const [userId, setUserId] = useState(null);
     const [userRole, setUserRole] = useState(null);
-    const [showMap, setShowMap] = useState(false); // ✅ NEW STATE for toggling map
+    const [showMap, setShowMap] = useState(false); 
 
     const showMessage = (text, type = 'success') => {
         setMessage({ text, type });
@@ -88,7 +88,7 @@ function App() {
     };
 
     const sortedBins = [...bins].sort((a, b) => {
-      const isOverflowA = a.fillLevel > 90 ? 1 : 0;   // Prioritize overflowing bins
+      const isOverflowA = a.fillLevel > 90 ? 1 : 0;   // overflowing bins
       const isOverflowB = b.fillLevel > 90 ? 1 : 0;
       return isOverflowB - isOverflowA || b.fillLevel - a.fillLevel;
     });

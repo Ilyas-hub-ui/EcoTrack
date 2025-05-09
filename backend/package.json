@@ -13,7 +13,7 @@
     "node",
     "express"
   ],
-  "author": "Your Name",
+  "author": "ilyas",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

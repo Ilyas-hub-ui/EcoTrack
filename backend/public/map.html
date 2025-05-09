@@ -30,7 +30,7 @@
       maxZoom: 19,
     }).addTo(map);
 
-    // Fetch bin data from your API
+    // Fetch bin data from our API
     fetch('http://localhost:5000/api/bins')
       .then(response => response.json())
       .then(bins => {

@@ -153,8 +153,8 @@ button:hover {
   border: 1px solid #f56565;
 }
 .overflow-alert {
-  border: 2px solid red;          /* Adds a red border */
-  background-color: #ffe6e6;      /* Light red background for overflowed bins */
+  border: 2px solid red;          
+  background-color: #ffe6e6;      
 }
 
 
