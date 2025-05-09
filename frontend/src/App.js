@@ -1,60 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
-import binIcon from './bin-icon.png';  // Import bin icon image
 
 function App() {
     const [bins, setBins] = useState([]);
     const [newLevels, setNewLevels] = useState({});
-    const [error, setError] = useState('');
-    const [user, setUser] = useState(null);  // Store user info here
-    const [username, setUsername] = useState(''); // For sign up
-    const [userId, setUserId] = useState(null);  // To store user ID after sign in
+    const [message, setMessage] = useState({ text: '', type: '' });
+    const [user, setUser] = useState(null);
+    const [username, setUsername] = useState('');
+    const [userId, setUserId] = useState(null);
+    const [userRole, setUserRole] = useState(null);
+    const [showMap, setShowMap] = useState(false); // ✅ NEW STATE for toggling map
 
-    // Simulate login (In a real-world scenario, use JWT or other secure methods)
+    const showMessage = (text, type = 'success') => {
+        setMessage({ text, type });
+        setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+    };
+
     const loginUser = () => {
         if (!username) {
-            alert("Please enter a username to log in.");
+            showMessage("Please enter a username to log in.", "error");
             return;
         }
 
         axios.get(`http://localhost:5000/api/users/${username}`)
             .then(res => {
-                setUser(res.data);  // Store logged-in user data
-                setUserId(res.data.id);  // Store user ID
+                setUser(res.data);
+                setUserId(res.data.id);
+                showMessage(`Welcome back, ${res.data.username}!`);
             })
-            .catch(err => setError('User not found. Please sign up.'));
+            .catch(() => showMessage('User not found. Please sign up.', 'error'));
     };
 
     const signUpUser = () => {
         if (!username) {
-            alert('Username cannot be empty!');
+            showMessage('Username cannot be empty!', 'error');
             return;
         }
 
-        // Sign up new user
         axios.post('http://localhost:5000/api/users', { username })
             .then(res => {
                 setUser(res.data);
                 setUserId(res.data.id);
                 setUsername('');
-                alert('User created successfully!');
+                showMessage('User created successfully!');
             })
-            .catch(err => setError('Error creating user'));
+            .catch(() => showMessage('Error creating user', 'error'));
     };
 
-    // Fetch Bin Data on Component Mount
     useEffect(() => {
         axios.get('http://localhost:5000/api/bins')
             .then(res => setBins(res.data))
-            .catch(() => setError('Failed to load bins. Check if the backend is running.'));
+            .catch(() => showMessage('Failed to load bins. Check if the backend is running.', 'error'));
     }, []);
 
-    // Handle Bin Updates
     const handleUpdate = (id) => {
         const level = parseInt(newLevels[id]);
         if (isNaN(level) || level < 0 || level > 100) {
-            alert("Please enter a valid fill level (0-100).");
+            showMessage("Please enter a valid fill level (0-100).", "error");
             return;
         }
 
@@ -63,28 +66,62 @@ function App() {
                 setBins(prev =>
                     prev.map(bin => bin.id === id ? { ...bin, fillLevel: level } : bin)
                 );
-                setNewLevels(prev => ({ ...newLevels, [id]: '' }));
+                setNewLevels(prev => ({ ...prev, [id]: '' }));
                 setUser(prevUser => ({
                     ...prevUser,
-                    points: prevUser.points + 10 // Add points to the user locally
+                    points: prevUser.points + 10
                 }));
-                alert("Fill level updated successfully and points awarded!");
+                showMessage("Fill level updated and points awarded!");
             })
-            .catch(err => {
-                console.error(err);
-                alert("Failed to update bin level.");
-            });
+            .catch(() => showMessage("Failed to update bin level.", "error"));
     };
 
-    // Sort bins by fill level for the leaderboard
-    const sortedBins = [...bins].sort((a, b) => b.fillLevel - a.fillLevel);
+    const handleDelete = (id) => {
+        if (window.confirm("Are you sure you want to delete this bin?")) {
+            axios.delete(`http://localhost:5000/api/bins/${id}?userId=${userId}`)
+                .then(() => {
+                    setBins(prev => prev.filter(bin => bin.id !== id));
+                    showMessage("Bin deleted successfully!");
+                })
+                .catch(() => showMessage("Failed to delete bin.", "error"));
+        }
+    };
+
+    const sortedBins = [...bins].sort((a, b) => {
+      const isOverflowA = a.fillLevel > 90 ? 1 : 0;   // Prioritize overflowing bins
+      const isOverflowB = b.fillLevel > 90 ? 1 : 0;
+      return isOverflowB - isOverflowA || b.fillLevel - a.fillLevel;
+    });
+    
 
     return (
         <div className="container">
             <h2>EcoTrack Bin Status Dashboard</h2>
-            {error && <p className="error">{error}</p>}
 
-            {/* Sign-Up/Sign-In Form */}
+            {message.text && (
+                <div className={`message ${message.type}`}>
+                    {message.text}
+                </div>
+            )}
+
+            {/* Show/Hide Map Button */}
+            <button onClick={() => setShowMap(prev => !prev)} className="auth-btn" style={{ marginBottom: '10px' }}>
+                {showMap ? 'Hide Interactive Map' : 'Show Interactive Map'}
+            </button>
+
+            {/* Show Map when toggled */}
+            {showMap && (
+                <div style={{ height: '500px', marginBottom: '20px' }}>
+                    <iframe
+                        src="http://localhost:5000/map.html"
+                        title="Interactive Map"
+                        width="100%"
+                        height="100%"
+                        style={{ border: '1px solid #ccc' }}
+                    />
+                </div>
+            )}
+
             {!user ? (
                 <div className="auth-container">
                     <h3>Sign Up or Log In</h3>
@@ -97,35 +134,47 @@ function App() {
                     />
                     <button onClick={signUpUser} className="auth-btn">Sign Up</button>
                     <button onClick={loginUser} className="auth-btn">Log In</button>
+
+                    <div className="role-selection">
+                        <button onClick={() => setUserRole('user')} className="auth-btn">Login as User</button>
+                        <button onClick={() => setUserRole('admin')} className="auth-btn">Login as Admin</button>
+                    </div>
                 </div>
             ) : (
                 <div>
                     <h3>Welcome {user.username} — Points: {user.points}</h3>
-                    <button onClick={() => setUser(null)} className="auth-btn">Log Out</button>
+                    <button onClick={() => setUser(null)} className="auth-btn logout">Log Out</button>
+
+                    {userRole === 'admin' && (
+                        <div>
+                            <h3>Admin Panel</h3>
+                            <p>You have the ability to delete and update bins.</p>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Leaderboard */}
-            <h3>Leaderboard</h3>
-            <div className="leaderboard">
-                {sortedBins.map(bin => (
-                    <div key={bin.id} className="bin-card">
-                        <img src={binIcon} alt="Bin Icon" className="bin-icon" />
-                        <div>
-                            📍 <strong>{bin.location}</strong> — Fill Level: {bin.fillLevel}%
-                        </div>
-                    </div>
-                ))}
-            </div>
+<div className="leaderboard">
+    {sortedBins.map(bin => (
+        <div key={bin.id} className={`bin-card ${userRole === 'admin' && bin.fillLevel > 90 ? 'overflow-alert' : ''}`}>
+            📍 <strong>{bin.location}</strong> — Fill Level: {bin.fillLevel}%
+            {/* Visual Overflow Alert for Admins */}
+            {userRole === 'admin' && bin.fillLevel > 90 && (
+                <span style={{ color: 'red', marginLeft: '10px', fontWeight: 'bold' }}>
+                    ⚠️ Overflow Alert!
+                </span>
+            )}
+        </div>
+    ))}
+</div>
 
-            {/* Update Bin Fill Level */}
+
             <h3>Update Bin Fill Level</h3>
             <div className="bin-update">
                 {bins.map(bin => (
-                    <div key={bin.id} className="bin-update-card">
-                        <img src={binIcon} alt="Bin Icon" className="bin-icon" />
+                    <div key={bin.id} className="update-card">
                         📍 <strong>{bin.location}</strong> — Current Fill Level: {bin.fillLevel}%
-                        <div>
+                        <div className="update-section">
                             <input
                                 type="number"
                                 placeholder="New level (0-100)"
@@ -133,7 +182,12 @@ function App() {
                                 onChange={(e) => setNewLevels({ ...newLevels, [bin.id]: e.target.value })}
                                 className="input-field"
                             />
-                            <button onClick={() => handleUpdate(bin.id)} className="update-btn">Update</button>
+                            <div className="btn-group">
+                                <button onClick={() => handleUpdate(bin.id)} className="update-btn">Update</button>
+                                {userRole === 'admin' && (
+                                    <button onClick={() => handleDelete(bin.id)} className="delete-btn">Delete Bin</button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
